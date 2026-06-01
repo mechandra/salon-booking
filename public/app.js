@@ -185,6 +185,10 @@ function renderConfig() {
 }
 
 async function loadCustomerBookings(phone) {
+  if (!customerBookings || !currentlyServingList) {
+    return;
+  }
+
   if (phone) {
     const bookings = await request(`/api/bookings/upcoming?phone=${encodeURIComponent(phone)}`);
     customerBookings.innerHTML = "";
@@ -557,4 +561,4 @@ async function init() {
   await loadCustomerBookings();
 }
 
-init();
+document.addEventListener("DOMContentLoaded", init);

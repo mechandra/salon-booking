@@ -18,6 +18,7 @@
     "react-native-web": "~0.21.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0"
+    "@babel/core": "^7.20.0",
+    "eas-cli": "^20.0.0"
   }
 }

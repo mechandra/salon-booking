@@ -9,8 +9,9 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const OWNER_EMAIL = "shah.chandrashekher@gmail.com";
-const OWNER_PHONE = "214-606-7901";
+const OWNER_EMAIL = process.env.OWNER_EMAIL || "shah.chandrashekher@gmail.com";
+const OWNER_PHONE = process.env.OWNER_PHONE || "214-606-7901";
+const EMAIL_FROM = process.env.EMAIL_FROM || process.env.SMTP_USER || OWNER_EMAIL;
 const DATA_PATH = path.join(__dirname, "data.json");
 const CANCEL_RESCHEDULE_LOCK_HOURS = 2;
 
@@ -134,16 +135,17 @@ async function sendNotifications(booking, type) {
         },
       });
       await transporter.sendMail({
-        from: process.env.SMTP_USER,
+        from: EMAIL_FROM,
         to: OWNER_EMAIL,
         subject: `Himal Glow Studio - ${type}`,
         text: message,
       });
+      console.log(`Email sent to ${OWNER_EMAIL} for ${type.toLowerCase()}.`);
     } catch (error) {
       console.error("Email notification failed:", error.message);
     }
   } else {
-    console.log(`Email not configured. Would notify ${OWNER_EMAIL}: ${message}`);
+    console.warn(`SMTP is not configured. Would notify ${OWNER_EMAIL}: ${message}`);
   }
 
   if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM_NUMBER) {
@@ -631,6 +633,22 @@ app.delete("/api/owner/bookings/:id", async (req, res) => {
   res.json({ message: "Booking deleted." });
 });
 
+app.get("/api/test-email", async (_req, res) => {
+  const testBooking = {
+    customerName: "Test Customer",
+    serviceName: "Test Service",
+    barberName: "Test Barber",
+    startTime: new Date().toISOString(),
+    confirmationCode: "TEST123",
+  };
+  try {
+    await sendNotifications(testBooking, "Test booking notification");
+    res.json({ message: `Test email triggered to ${OWNER_EMAIL}.` });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Email test failed." });
+  }
+});
+
 ensureDataFile().then(() => {
   setInterval(() => {
     processReminders().catch((error) => console.error("Reminder check failed:", error.message));
@@ -638,5 +656,15 @@ ensureDataFile().then(() => {
 
   app.listen(PORT, () => {
     console.log(`Himal Glow Studio app running at http://localhost:${PORT}`);
+    const routeStack = app._router?.stack;
+    if (routeStack) {
+      const routeList = routeStack
+        .filter((layer) => layer.route)
+        .map((layer) => {
+          const methods = Object.keys(layer.route.methods).join(",");
+          return `${methods.toUpperCase()} ${layer.route.path}`;
+        });
+      console.log("Registered routes:", routeList.join(" | "));
+    }
   });
 });
