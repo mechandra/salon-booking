@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Himal Glow Studio</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Himal Glow Studio (Under Construction...)</p>
+        <h1>Book, check in, and manage salon flow.</h1>
+        <p class="hero-sub">Euless, Texas • 222-222-2222 • Walk-ins are always welcome.</p>
+      </div>
+    </header>
+
+    <main class="layout">
+      <nav class="tabs">
+        <button class="tab active" data-tab="customer">Customer</button>
+        <button class="tab" data-tab="owner">Salon Dashboard</button>
+      </nav>
+
+      <section id="customer" class="panel">
+        <div class="card">
+          <h2>Book an appointment</h2>
+          <form id="bookingForm" class="grid-form">
+            <label>
+              Customer name
+              <input name="customerName" required />
+            </label>
+            <label>
+              Customer phone
+              <input
+                id="customerPhone"
+                name="customerPhone"
+                required
+                placeholder="214-000-0000"
+                maxlength="12"
+                inputmode="numeric"
+              />
+            </label>
+            <label>
+              Service
+              <select name="serviceId" id="serviceSelect" required></select>
+            </label>
+            <label>
+              Barber
+              <select name="barberId" id="barberSelect" required></select>
+            </label>
+            <label>
+              Booking date
+              <input id="bookingDate" type="date" name="bookingDate" required />
+            </label>
+            <label>
+              Booking time (CST) or Walk-in
+              <select id="bookingTime" name="bookingTime" required></select>
+              <small id="walkinNote" class="muted">Select a time or choose "Walk-in" for immediate arrival.</small>
+            </label>
+            <button type="submit">Book now</button>
+          </form>
+          <p id="bookingMsg" class="msg"></p>
+
+          <div class="checkin-block">
+            <h2>Check in</h2>
+            <p>Enter your phone number to find and check in only your booking.</p>
+            <label>
+              Phone number
+              <input id="checkinPhone" placeholder="214-000-0000" maxlength="12" inputmode="numeric" />
+            </label>
+            <button type="button" id="lookupBookingsBtn">Find my bookings</button>
+            <div id="customerBookings" class="list"></div>
+            <p id="checkinMsg" class="msg"></p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Manage booking</h2>
+          <p>
+            Use your confirmation code and phone to reschedule or cancel (up to 2 hours before). All booking
+            times in this app are Central Time (CST/CDT).
+          </p>
+          <form id="manageForm" class="grid-form">
+            <label>
+              Confirmation code
+              <input id="manageCode" name="confirmationCode" required />
+            </label>
+            <label>
+              Phone number
+              <input id="managePhone" name="customerPhone" required maxlength="12" inputmode="numeric" />
+            </label>
+            <label>
+              New date
+              <input id="rescheduleDate" name="rescheduleDate" type="date" required />
+            </label>
+            <label>
+              New time (CST)
+              <select id="rescheduleTime" name="rescheduleTime" required></select>
+            </label>
+            <label>
+              Barber
+              <select id="rescheduleBarber" name="rescheduleBarber" required></select>
+            </label>
+            <div class="actions">
+              <button type="button" id="findBookingBtn">Find booking</button>
+              <button type="button" id="rescheduleBtn">Reschedule</button>
+              <button type="button" class="danger" id="cancelBookingBtn">Cancel booking</button>
+              <button type="button" id="copyCodeBtn">Copy code</button>
+            </div>
+          </form>
+          <p id="manageMsg" class="msg"></p>
+        </div>
+      </section>
+
+      <section id="owner" class="panel hidden">
+        <div class="card" id="ownerAccessCard">
+          <h2>Owner access</h2>
+          <div class="owner-gate">
+            <input id="ownerPin" type="password" placeholder="Enter owner PIN" />
+            <button id="unlockOwnerBtn">Unlock</button>
+          </div>
+          <p class="muted">
+            Dashboard includes upcoming customers, phone numbers, service pricing, and currently serving status.
+          </p>
+          <p id="ownerMsg" class="msg"></p>
+        </div>
+
+        <div id="ownerSection" class="hidden">
+          <div class="stats" id="stats"></div>
+          <div class="card">
+            <h3>Upcoming bookings</h3>
+            <div id="upcomingList" class="list"></div>
+          </div>
+
+          <div class="card">
+            <h3>Currently serving</h3>
+            <div id="ownerServingList" class="list"></div>
+          </div>
+
+          <div class="card">
+            <h3>History</h3>
+            <div class="actions">
+              <button id="clearHistoryBtn" class="danger">Clear history</button>
+            </div>
+            <div id="historyList" class="list"></div>
+          </div>
+
+          <div class="card">
+            <h3>Business insights</h3>
+            <div id="analyticsList" class="list"></div>
+          </div>
+
+          <div class="card">
+            <h3>Service price list</h3>
+            <div id="priceList" class="list"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+  </html>
