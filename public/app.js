@@ -118,6 +118,18 @@ function formatPhoneInput(value) {
   return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
+function applyQueryParams() {
+  const search = new URLSearchParams(window.location.search);
+  const code = search.get("code");
+  const phone = search.get("phone");
+  if (code || phone) {
+    setTab("customer");
+    if (code) manageCodeInput.value = code.trim().toUpperCase();
+    if (phone) managePhoneInput.value = formatPhoneInput(phone);
+    manageMsg.textContent = "Booking details are preloaded. Click Find booking to manage your appointment.";
+  }
+}
+
 function updateWalkinHint() {
   if (!walkinNote) return;
   if (bookingTimeSelect.value === "walk-in") {
@@ -260,6 +272,7 @@ bookingForm.addEventListener("submit", async (event) => {
   const payload = {
     customerName: formData.get("customerName"),
     customerPhone: formData.get("customerPhone"),
+    customerEmail: formData.get("customerEmail"),
     serviceId: formData.get("serviceId"),
     barberId: formData.get("barberId"),
     startTime: buildLocalIso(bookingDate, bookingTime),
@@ -559,6 +572,7 @@ async function init() {
   updateWalkinHint();
   renderConfig();
   await loadCustomerBookings();
+  applyQueryParams();
 }
 
 document.addEventListener("DOMContentLoaded", init);

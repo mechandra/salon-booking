@@ -9,6 +9,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const BOOKING_BASE_URL = process.env.BOOKING_BASE_URL || `http://localhost:${PORT}`;
 const OWNER_EMAIL = process.env.OWNER_EMAIL || "shah.chandrashekher@gmail.com";
 const OWNER_PHONE = process.env.OWNER_PHONE || "214-606-7901";
 const EMAIL_FROM = process.env.EMAIL_FROM || process.env.SMTP_USER || OWNER_EMAIL;
@@ -59,6 +60,13 @@ function serviceById(serviceId) {
 
 function normalizePhone(phone) {
   return String(phone || "").replace(/\D/g, "").slice(0, 10);
+}
+
+function toE164(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length > 0) return `+${digits}`;
+  return null;
 }
 
 function isActiveBooking(booking) {
@@ -116,7 +124,16 @@ function isCentralTimeBetween(date, startHour, endHour) {
 }
 
 async function sendNotifications(booking, type) {
-  const message = `${type.toUpperCase()}: ${booking.customerName} - ${booking.serviceName} with ${booking.barberName} at ${new Date(booking.startTime).toLocaleString()} (Code: ${booking.confirmationCode})`;
+  const manageLink = `${BOOKING_BASE_URL}/?code=${encodeURIComponent(booking.confirmationCode)}&phone=${encodeURIComponent(booking.customerPhone)}`;
+  const message = `${type.toUpperCase()}\n` +
+    `Customer: ${booking.customerName}\n` +
+    `Phone: ${booking.customerPhone}\n` +
+    `Email: ${booking.customerEmail || "Not provided"}\n` +
+    `Service: ${booking.serviceName}\n` +
+    `Barber: ${booking.barberName}\n` +
+    `Time: ${new Date(booking.startTime).toLocaleString()}\n` +
+    `Code: ${booking.confirmationCode}\n` +
+    `Manage: ${manageLink}`;
 
   if (
     process.env.SMTP_HOST &&
@@ -134,6 +151,7 @@ async function sendNotifications(booking, type) {
           pass: process.env.SMTP_PASS,
         },
       });
+
       await transporter.sendMail({
         from: EMAIL_FROM,
         to: OWNER_EMAIL,
@@ -141,6 +159,28 @@ async function sendNotifications(booking, type) {
         text: message,
       });
       console.log(`Email sent to ${OWNER_EMAIL} for ${type.toLowerCase()}.`);
+
+      const customerTypesForEmail = /booked|rescheduled|cancelled|reminder/i;
+      console.log(`Customer email branch: email=${booking.customerEmail}, type=${type}, allowed=${customerTypesForEmail.test(type)}`);
+      if (booking.customerEmail && customerTypesForEmail.test(type)) {
+        const customerSubject = `Your Himal Glow Studio booking: ${type}`;
+        const customerMessage = `Hello ${booking.customerName},\n\n` +
+          `Your booking details are below:\n` +
+          `Service: ${booking.serviceName}\n` +
+          `Barber: ${booking.barberName}\n` +
+          `Time: ${new Date(booking.startTime).toLocaleString()}\n` +
+          `Confirmation code: ${booking.confirmationCode}\n` +
+          `Manage your booking: ${manageLink}\n\n` +
+          `Thank you for choosing Himal Glow Studio.`;
+
+        await transporter.sendMail({
+          from: EMAIL_FROM,
+          to: booking.customerEmail,
+          subject: customerSubject,
+          text: customerMessage,
+        });
+        console.log(`Email sent to customer ${booking.customerEmail} for ${type.toLowerCase()}.`);
+      }
     } catch (error) {
       console.error("Email notification failed:", error.message);
     }
@@ -158,11 +198,25 @@ async function sendNotifications(booking, type) {
         from: process.env.TWILIO_FROM_NUMBER,
         to: ownerPhoneE164,
       });
+
+      const customerPhoneE164 = toE164(booking.customerPhone);
+      const bookingTypesForCustomer = /booked|rescheduled|cancelled/i;
+      if (customerPhoneE164 && bookingTypesForCustomer.test(type)) {
+        const customerMessage = `${type} confirmed for ${booking.customerName}. ` +
+          `Service: ${booking.serviceName} at ${new Date(booking.startTime).toLocaleString()}. ` +
+          `Code: ${booking.confirmationCode}. Manage: ${manageLink}`;
+        await client.messages.create({
+          body: customerMessage,
+          from: process.env.TWILIO_FROM_NUMBER,
+          to: customerPhoneE164,
+        });
+        console.log(`SMS sent to customer ${customerPhoneE164} for ${type.toLowerCase()}.`);
+      }
     } catch (error) {
       console.error("SMS notification failed:", error.message);
     }
   } else {
-    console.log(`SMS not configured. Would notify ${OWNER_PHONE}: ${message}`);
+    console.log(`SMS not configured. Would notify ${OWNER_PHONE} and the customer: ${message}`);
   }
 }
 
@@ -240,14 +294,19 @@ app.get("/api/bookings/currently-serving", async (_req, res) => {
 });
 
 app.post("/api/bookings", async (req, res) => {
-  const { customerName, customerPhone, serviceId, barberId, startTime } = req.body;
-  if (!customerName || !customerPhone || !serviceId || !barberId || !startTime) {
+  const { customerName, customerPhone, customerEmail, serviceId, barberId, startTime } = req.body;
+  if (!customerName || !customerPhone || !customerEmail || !serviceId || !barberId || !startTime) {
     return res.status(400).json({ error: "Missing required fields." });
   }
 
   const normalizedCustomerPhone = normalizePhone(customerPhone);
   if (normalizedCustomerPhone.length !== 10) {
     return res.status(400).json({ error: "Invalid customer phone number." });
+  }
+
+  const normalizedCustomerEmail = String(customerEmail || "").trim().toLowerCase();
+  if (!normalizedCustomerEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedCustomerEmail)) {
+    return res.status(400).json({ error: "Invalid customer email address." });
   }
 
   const service = serviceById(serviceId);
@@ -298,6 +357,7 @@ app.post("/api/bookings", async (req, res) => {
     id: `bk_${Date.now()}`,
     customerName: customerName.trim(),
     customerPhone: normalizedCustomerPhone,
+    customerEmail: normalizedCustomerEmail,
     confirmationCode: generateConfirmationCode(),
     serviceId: service.id,
     serviceName: service.name,
